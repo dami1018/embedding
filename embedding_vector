@@ -1,0 +1,107 @@
+# 通过词向量来实现分类，情感分析，相关性分析以及搜索等功能
+# bert-base-chinese
+# hfl/chinese-bert-wwm
+# hfl/chinese-roberta-wwm-ext
+
+# "hfl/chinese-roberta-wwm-ext"模型
+# 从transformers库中导入所需的类和函数
+from transformers import AutoTokenizer, AutoModel
+import torch
+import numpy as np
+
+# 加载预训练的模型和分词器
+tokenizer = AutoTokenizer.from_pretrained("hfl/chinese-roberta-wwm-ext")
+model = AutoModel.from_pretrained("hfl/chinese-roberta-wwm-ext")
+
+# 这两行代码首先使用AutoTokenizer.from_pretrained()加载了预训练的中文RoBERTa模型的分词器，并使用AutoModel.from_pretrained()加载了预训练的中文RoBERTa模型本身。
+
+# 将文本转换为词向量
+text = "我好晕啊"
+inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+# 在代码示例中，我们使用了tokenizer将文本转换为模型可以理解的张量表示。在这个过程中，我们通过tokenizer的__call__方法调用了inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)，这使得该方法内置了一些默认参数。然后我们使用**inputs将字典拆分为关键字参数传递给模型，这是Python的一种语法，有点类似解包操作。这样做的好处是可以简化输入和确保输入格式正确。
+# 至于为什么不能直接使用input作为函数或变量名，这是因为input是Python内置函数，用于接收用户输入，而重复使用Python内置函数名可能导致冲突或不符合预期。为了避免这种情况，我们可以选择在变量名后加上下划线，如input_，来避免与内置函数名冲突。
+outputs = model(**inputs)
+# 分词的截断并不一定意味着信息就被丢弃了，而是通过一定的策略对文本进行处理，使其符合模型输入的要求。在NLP任务中，由于模型对输入长度有一定的限制，因此可能需要对输入进行截断或填充，以使其长度符合模型的要求。
+# 对于截断，一般会选择保留文本的关键信息，例如保留句子的开头和结尾，或者根据任务的特点采用其他合适的截断策略。截断掉的部分信息可能会影响模型对文本的全面理解，但在实践中通常会选择合适的截断策略，以在保留重要信息的同时满足模型输入的要求。
+# 如果对于某些特定任务，保留完整的文本信息非常重要，可以考虑使用更大的输入长度，或者使用适合处理长文本的模型，以避免信息丢失。
+word_vector_1 = outputs.last_hidden_state.mean(dim=1).detach().numpy()
+
+# 这部分代码首先将文本“我好晕啊”使用tokenizer()函数进行分词和编码，得到输入的张量表示。然后将这个输入张量传递给预训练模型，得到输出张量。最后，对输出张量的最后一个隐藏层进行平均池化操作，得到文本的词向量word_vector_1。
+# 计算第一个词向量和“大家都晕”的距离
+text2 = "大家都晕"
+inputs2 = tokenizer(text2, return_tensors="pt", padding=True, truncation=True)
+outputs2 = model(**inputs2)
+word_vector_2 = outputs2.last_hidden_state.mean(dim=1).detach().numpy()
+distance1 = np.linalg.norm(word_vector_1 - word_vector_2)
+
+# 这部分代码对文本“大家都晕”进行了与第三步类似的处理，得到了词向量word_vector_2，并计算了word_vector_1和word_vector_2之间的欧氏距离，保存在distance1变量中。
+# 计算第一个词向量和“大家都不运动”的距离
+text3 = "大家都不运动"
+inputs3 = tokenizer(text3, return_tensors="pt", padding=True, truncation=True)
+outputs3 = model(**inputs3)
+word_vector_3 = outputs3.last_hidden_state.mean(dim=1).detach().numpy()
+# 在这里，我们使用np.linalg.norm(word_vector_1 - word_vector_3)来计算word_vector_1和word_vector_3之间的距离，而不是求它们之间的点积，是因为这里我们想要衡量两个词向量之间的差异或相似度，而不是它们之间的相似度。
+# 计算两个向量之间的点积可以表征它们之间的相似度，较大的点积通常意味着两个向量更相似。但在这个场景下，我们想要计算词向量之间的差异（即它们不同的程度），因此我们选择使用欧氏距离来衡量这种差异。
+# 欧氏距离可以在多维空间中衡量两个向量之间的距离，而点积则更多地反映了它们之间的相似程度。在某些情况下，点积可能更适合用于衡量相似度，但在本例中，我们更关心两个词向量之间的差异，因此选择了欧氏距离作为度量方式。
+distance2 = np.linalg.norm(word_vector_1 - word_vector_3)
+# 这部分代码对文本“大家都不运动”进行了与第四步类似的处理，得到了词向量word_vector_3，并计算了word_vector_1和word_vector_3之间的欧氏距离，保存在distance2变量中。
+
+# 打印结果
+print("和词向量'大家都晕'的距离：", distance1)
+print("和词向量'大家都不运动'的距离：", distance2)
+
+# 求点积,是(1,768)维度的，需要转置
+
+np.dot(word_vector_1 , word_vector_3.T)
+np.dot(word_vector_1 , word_vector_2.T)
+
+# 购买的embedding 
+import requests
+import json
+
+short_text = """
+把握结构性投资机遇，长线布局国货崛起与出海主线
+"""
+
+long_text = """
+好的，各位投资者，欢迎大家加入我们补充零售小组的周期投资策略的变化非常只是零售的公司相对好，线上与我们一组的两个同事来联系和互相联络。我们第一期也是外发了零售及维护行业的下半年的一个投资策略，也是在这里跟大家做一个分享。一会也会对近期的一些热点的事件，包括跨境电商，包括美术板块的一个我们线下数据的情况做一些更细节的分享。整体首先看一下上半年的一个行业的一个复盘，其实今天最新的社0数据也发布了整个上半年消费行业整体还是一个相对比较平淡的复苏的进程，比选消费相对而言还是比较平稳的，可选消费里边波动还是蛮大的。
+整个从商业业态来看，包括我们最近跟一些线下的百货商超公司的交流，整个业态其实还是复苏的相对比较平淡，投资业绩来看，其实线上的数据还是相对比较好，虽然说整体的一个增速也只有三位数，但是还是好于整个社0的一个大盘。从线上目前的一个情况来看，最近的618包括大促其实表现都不算特别好，但是大促我们也看到第三方的数据的口统计的口径还是不太一样，星途的数据其实618是下滑，易观的数据是增长，但不管怎么样，其实因为这几年电商的这种促销的节奏力度以及平台的这种分流变化非常的多，促销的节点也非常的密集，平台之间的分流也非常的明显。
+所以整体来看，整个线上其实还是处于一个越来越去中心化的环节，变化也非常的快。去年抖音还是一骑绝尘，但今年也出现了环比放缓的迹象，所以对很多的一些品牌方来说，它的投放的线上的运营的难度仍然是在加大的。另外低价化的趋势仍然是非常的明显。抖音今年的白牌包括拼多多继续的投标以及天猫京东也开始往低价化的整个内容化的转型，其实也对品牌这边的精细化的投放以及本身毛利率的一个厚度的维护其实也提出了更高的一个要求。
+整体来看，我们也看到社零数据里面电商占比比较高的化妆品、家电、小家电这些其实体现了非常明显的业主之间的一个波动。5月份增速化妆品是有18的增长，但6月份一下子变成了19的下滑，所以其实体现的就是以往的大促的促销的爆发系数是越来越弱。我们之前也提到过，整个以前大促的投资效应在今年开始会变成一种泄洪效应，可能非大促的增速会被动的抬升，这样子对于原有的这种这种品牌的运营或者平台的打法可能提出了更高的挑战。以前大家可能都是四五月份推品种草，6月份大促收割，现在可能会发现四五月份花出去的钱，6月份换不回，相对应的收入增长，可能影响力会比较大。
+所以线上这边其实会有比较大的一些一些变化。这里面线下其实整体还是可选的，业态压力还是蛮大的。百货公司其实看一季报基本上都没有回到21年同期水平的七八成，因为回到了21年同期水平七八成，利润可能只有六七成。我们目前从二季度跟踪下来情况估计跟一季度趋势也差不多，所以线下更多的也是进行调整和转型的过程。上市公司可能要用你具备的资本的运营的工具也会比较多，所以我们可能线下的业态更多的还是寻找一些主题性的机会，自身的一些收并购或者说是借助外部力量的一些转型，可能是这家业态的最核心的一条主线。
+机器的车险这边我们重点覆盖的黄金、珠宝和化妆品，首先黄金、珠宝，其实它的波动还是非常大，主要核心原因还是在于金价。今年一季度其实在前2年的高技术之下，仍然是有1个设立应该也是有5个点左右的增长，我记得q一的时候其实增速还是非常不错的，因为考虑到前几年应该已经算是一个高基数了。核心原因其实主要我觉得还是在于金价的高企一方面是投资的品类需求还是非常的旺盛，另外一方面因为一季度是送礼结婚的这种刚需，金价涨得再高，你该该要买的东西还是得买，因为偏刚需。
+"""
+
+
+if __name__ == '__main__':
+
+
+	headers = {
+		"Authorization": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiZmNhZDZkMjEtZGI0MC00Mzg2LWFjYWQtY2M5OWI2M2I5NTQ4IiwiZXhwIjo0OTE3NzI4ODE3fQ.KtFqy7QiwRIbh5LvcvvqF821SjxWKjS1SgpCgUHwwwg",
+		"Content-Type": "application/json"
+	}
+
+	# 短文本
+	data_list = {'content':[short_text, short_text]}
+	res_s1 = requests.post(url='http://api-ai-prod.valuesimplex.tech/api/ml/v2/get_seg_embedding_public', headers = headers,json=data_list).text
+	res_s2 = json.loads(res_s1)['prediction']
+	print('res',res_s2)
+
+	# 长文本
+	data_list = {'content':[long_text, long_text]}
+	res_l1 = requests.post(url='http://api-ai-prod.valuesimplex.tech/api/ml/v2/get_seg_embedding_public', headers = headers,json=data_list).text
+	res_l2 = json.loads(res_l1)['prediction']
+	print('res',res_l2)
+    
+    # 自选文本
+    text = '我是一个屁股'
+    data_list = {'content':[text]}
+	res_t1 = requests.post(url='http://api-ai-prod.valuesimplex.tech/api/ml/v2/get_seg_embedding_public', headers = headers,json=data_list).text
+    res_t = json.loads(res_t1)
+	res_l2 = json.loads(res_t1)['prediction']
+    # ['data']['embedding'][0]
+    res = res_l2['data']
+    res[0]['embedding']
+	print('res',res_l2)
+    
+
